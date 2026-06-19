@@ -12,16 +12,52 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import nltk
 import seaborn as sns
 
+# Add local nltk_data to search path for offline container deployments
+local_nltk_path = os.path.join(os.path.dirname(__file__), 'nltk_data')
+if local_nltk_path not in nltk.data.path:
+    nltk.data.path.append(local_nltk_path)
+
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
 except LookupError:
-    nltk.download('vader_lexicon')
+    try:
+        nltk.download('vader_lexicon', download_dir=local_nltk_path)
+    except Exception:
+        # Fallback to writable directory in serverless environments
+        tmp_nltk_path = os.path.join('/tmp', 'nltk_data')
+        os.makedirs(tmp_nltk_path, exist_ok=True)
+        if tmp_nltk_path not in nltk.data.path:
+            nltk.data.path.append(tmp_nltk_path)
+        nltk.download('vader_lexicon', download_dir=tmp_nltk_path)
 
 sia = SentimentIntensityAnalyzer()
+
+# Helper to handle read-only filesystems in environments like Vercel
+def get_writable_dir(path_name):
+    try:
+        os.makedirs(path_name, exist_ok=True)
+        # Test write access
+        test_file = os.path.join(path_name, '.write_test')
+        with open(test_file, 'w') as f:
+            f.write('')
+        os.remove(test_file)
+        return path_name
+    except Exception:
+        # Fallback to /tmp under serverless environment
+        fallback = os.path.join('/tmp', os.path.basename(path_name) or 'fallback')
+        os.makedirs(fallback, exist_ok=True)
+        return fallback
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mindspace_secret_key'
 app.jinja_env.filters['enumerate'] = enumerate
+
+# Route custom requests for static plots to the resolved writable directory
+from flask import send_from_directory
+@app.route('/static/plots/<path:filename>')
+def serve_custom_plots(filename):
+    plots_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
+    return send_from_directory(plots_dir, filename)
 
 data_df = None
 corr_matrix = None
@@ -70,8 +106,8 @@ def upload():
                 session['history'] = history[:10]
                 session.modified = True
                 process_data()
-                os.makedirs('data', exist_ok=True)
-                data_df.to_csv('data/updated_sample.csv', index=False)
+                writable_data_dir = get_writable_dir('data')
+                data_df.to_csv(os.path.join(writable_data_dir, 'updated_sample.csv'), index=False)
                 flash(f"Successfully uploaded {file.filename}. {len(data_df)} records processed.", "success")
                 return redirect(url_for('dashboard'))
             except Exception as e:
@@ -99,8 +135,7 @@ def upload():
     report = classification_report(y_test, y_pred, target_names=['Low', 'Medium', 'High'], output_dict=True, zero_division=0)
 
     # Save cm plot
-    plot_dir = os.path.join(app.static_folder, 'plots')
-    os.makedirs(plot_dir, exist_ok=True)
+    plot_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
     plt.figure(figsize=(6, 5))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Low', 'Medium', 'High'], yticklabels=['Low', 'Medium', 'High'])
     plt.title('Confusion Matrix')
@@ -126,8 +161,7 @@ def process_data():
     global data_df, corr_matrix, eval_metrics
     if data_df is None:
         return
-    plot_dir = os.path.join(app.static_folder, 'plots')
-    os.makedirs(plot_dir, exist_ok=True)
+    plot_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
 
     # Fuzzy column mapping
     col_map = {
@@ -424,8 +458,7 @@ def _auto_train(target='primary'):
 
         # Save specific confusion matrix plot
         import seaborn as sns
-        plot_dir = os.path.join(app.static_folder, 'plots')
-        os.makedirs(plot_dir, exist_ok=True)
+        plot_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
         img_filename = f'confusion_matrix_{target}.png'
         
         dark_bg = '#0f1117'
@@ -562,8 +595,8 @@ def edit():
                         pass
 
             process_data()
-            os.makedirs('data', exist_ok=True)
-            data_df.to_csv('data/updated_sample.csv', index=False)
+            writable_data_dir = get_writable_dir('data')
+            data_df.to_csv(os.path.join(writable_data_dir, 'updated_sample.csv'), index=False)
             flash("Dataset updated and metrics recalculated successfully.", "success")
         return redirect(url_for('dashboard'))
     return render_template(
@@ -612,8 +645,7 @@ def _build_stats(df):
 
 def _generate_compare_plots(stats_a, stats_b, label_a, label_b):
     """Generate 5 comparison plots saved to static/plots/cmp_*.png."""
-    plot_dir = os.path.join(app.static_folder, 'plots')
-    os.makedirs(plot_dir, exist_ok=True)
+    plot_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
 
     dark_bg  = '#0f1117'
     text_col = '#c9d1d9'
