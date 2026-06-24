@@ -25,6 +25,13 @@ sia = SentimentIntensityAnalyzer()
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 CORS(app, supports_credentials=True) # Enable CORS for React frontend
 
+# clear old plots on startup
+plot_dir = os.path.join(app.static_folder, 'plots')
+if os.path.exists(plot_dir):
+    shutil.rmtree(plot_dir)
+    
+os.makedirs(plot_dir, exist_ok=True)
+
 app.config['SECRET_KEY'] = 'mindspace_secret_key'
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
