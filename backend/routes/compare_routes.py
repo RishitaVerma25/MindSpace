@@ -61,8 +61,15 @@ def compare_results():
     )
     label_b = state.compare_meta.get('filename', 'Dataset B')
 
-    stats_a = _build_stats(state.data_df.copy(), state.get_sia())
-    stats_b = _build_stats(state.compare_df.copy(), state.get_sia())
+    if getattr(state, '_last_data_df_id', None) != id(state.data_df):
+        state.primary_stats = _build_stats(state.data_df.copy(), state.get_sia())
+        state._last_data_df_id = id(state.data_df)
+    stats_a = state.primary_stats
+
+    if getattr(state, '_last_compare_df_id', None) != id(state.compare_df):
+        state.compare_stats = _build_stats(state.compare_df.copy(), state.get_sia())
+        state._last_compare_df_id = id(state.compare_df)
+    stats_b = state.compare_stats
 
     plot_dir = os.path.join(current_app.static_folder, 'plots')
     _generate_compare_plots(stats_a, stats_b, label_a, label_b, plot_dir)
