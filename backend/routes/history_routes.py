@@ -10,6 +10,11 @@ def get_history():
 @history_bp.route('/api/reset', methods=['POST'])
 def reset():
     session.pop('history', None)
+    import state
+    import shutil
+    user_dir = state._get_user_dir()
+    if __import__('os').path.exists(user_dir):
+        shutil.rmtree(user_dir, ignore_errors=True)
     return jsonify({'success': True})
 
 @history_bp.route('/api/delete-session/<int:idx>', methods=['DELETE'])

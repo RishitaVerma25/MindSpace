@@ -51,7 +51,9 @@ def compare_upload():
         plot_dir = os.path.join(current_app.static_folder, 'plots')
         metrics = _auto_train(state.compare_df, plot_dir, 'compare')
         if metrics:
-            state.eval_metrics['compare'] = metrics
+            em = state.eval_metrics
+            em['compare'] = metrics
+            state.eval_metrics = em
 
         return jsonify({'success': True})
     except Exception as e:
