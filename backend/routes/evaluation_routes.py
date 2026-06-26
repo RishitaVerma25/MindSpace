@@ -22,7 +22,9 @@ def evaluate():
         df_to_train = state.data_df if target == 'primary' else state.compare_df
         metrics = _auto_train(df_to_train, plot_dir, target)
         if metrics:
-            state.eval_metrics[target] = metrics
+            em = state.eval_metrics
+            em[target] = metrics
+            state.eval_metrics = em
         metrics = state.eval_metrics.get(target)
 
     if metrics is None:

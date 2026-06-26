@@ -34,7 +34,9 @@ def upload():
 
             metrics = _auto_train(state.data_df, plot_dir, 'primary')
             if metrics:
-                state.eval_metrics['primary'] = metrics
+                em = state.eval_metrics
+                em['primary'] = metrics
+                state.eval_metrics = em
 
             os.makedirs('data', exist_ok=True)
             state.data_df.to_csv('data/updated_sample.csv', index=False)
