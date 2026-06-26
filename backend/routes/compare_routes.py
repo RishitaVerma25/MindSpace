@@ -33,17 +33,10 @@ def compare_upload():
             if col in cdf.columns:
                 cdf[col] = pd.to_numeric(cdf[col], errors='coerce').fillna(0)
                 cdf[col] = cdf[col].apply(lambda x: max(x, 0))
-        cdf['burnout_score'] = cdf.apply(
-            lambda r: ((r.get('study_hours', 0) / r.get('sleep_hours', 1)
-                        if r.get('sleep_hours', 0) > 0 else 0) * r.get('stress_level', 0)) * 10,
-            axis=1
-        )
-        cdf['burnout_score'] = np.clip(cdf['burnout_score'], 0, 100)
-        cdf['risk'] = pd.cut(cdf['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High'])
-        if 'feedback' in cdf.columns:
-            cdf['sentiment_score'] = cdf['feedback'].apply(
-                lambda x: state.get_sia().polarity_scores(str(x))['compound']
-            )
+        from services.burnout_service import calculate_burnout, assign_risk, calculate_sentiment
+        cdf = calculate_burnout(cdf)
+        cdf = assign_risk(cdf)
+        cdf = calculate_sentiment(cdf, state.get_sia())
 
         state.compare_df = cdf
         state.compare_meta = {'filename': file.filename, 'records': len(cdf)}
