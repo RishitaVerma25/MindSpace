@@ -26,8 +26,11 @@ secret_key = os.environ.get('SECRET_KEY')
 if is_prod and not secret_key:
     raise ValueError("No SECRET_KEY set for production environment!")
 app.config['SECRET_KEY'] = secret_key or 'dev_secret_key_mindspace'
-app.config['SESSION_COOKIE_SAMESITE'] = 'None' if is_prod else 'Lax'
-app.config['SESSION_COOKIE_SECURE']   = is_prod
+
+# Drive cookie security via COOKIE_SECURE if set, fallback to FLASK_ENV=production
+is_secure = os.environ.get('COOKIE_SECURE', str(is_prod)).lower() in ('true', '1', 'yes')
+app.config['SESSION_COOKIE_SAMESITE'] = 'None' if is_secure else 'Lax'
+app.config['SESSION_COOKIE_SECURE']   = is_secure
 
 # Clear old plots on startup
 plot_dir = os.path.join(app.static_folder, 'plots')
