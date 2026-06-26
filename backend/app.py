@@ -23,7 +23,7 @@ CORS(app, supports_credentials=True)
 
 app.config['SECRET_KEY']              = os.environ.get('SECRET_KEY') or os.urandom(24)
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-app.config['SESSION_COOKIE_SECURE']   = os.environ.get('FLASK_ENV') == 'production'
+app.config['SESSION_COOKIE_SECURE']   = True
 
 # Clear old plots on startup
 plot_dir = os.path.join(app.static_folder, 'plots')
