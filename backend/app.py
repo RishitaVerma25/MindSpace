@@ -21,7 +21,7 @@ app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 CORS(app, supports_credentials=True)
 
-app.config['SECRET_KEY']              = os.environ.get('SECRET_KEY') or os.urandom(24)
+app.config['SECRET_KEY']              = os.environ.get('SECRET_KEY', 'dev_secret_key_mindspace')
 is_prod = os.environ.get('FLASK_ENV') == 'production'
 app.config['SESSION_COOKIE_SAMESITE'] = 'None' if is_prod else 'Lax'
 app.config['SESSION_COOKIE_SECURE']   = is_prod
